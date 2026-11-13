@@ -84,6 +84,19 @@ export function agentDeviceQuickStart(
   ].join("\n");
 }
 
+const isWatchSimulator = (device: Pick<DeviceSummary, "platform" | "version">) =>
+  device.platform === "ios" && device.version.startsWith("watchOS ");
+
+// agent-device has no watchOS runner (XCUITest cannot drive watchOS UI), so it cannot target one.
+function watchSimulatorQuickStart(device: DeviceSummary): string {
+  return [
+    `The user is watching ${device.name} (${device.version}) in the Device panel.`,
+    "agent-device cannot drive watchOS simulators: there are no snapshots, taps, swipes or text entry for agents on this device. Do not use the agent-device command for it.",
+    "Use device_screenshot to look. The user can tap and swipe it in the Device panel.",
+    `To install, launch or open a URL, run xcrun simctl on the device host: xcrun simctl install ${device.id} <path-to-.app>, xcrun simctl launch ${device.id} <bundle-id>, xcrun simctl openurl ${device.id} <url>.`,
+  ].join("\n");
+}
+
 const requireDeviceAccess = McpInvocationContext.requireThreadMcpCapability("device").pipe(
   Effect.mapError(
     () =>
@@ -301,19 +314,21 @@ const handlers = {
       return {
         device,
         agentDevice: { command, targetArgs, session: agent.session },
-        quickStart: agentDeviceQuickStart(
-          device,
-          [],
-          command,
-          hostKind === "simlock"
-            ? {
-                kind: "simlock",
-                ...(agent.installDirectory ? { installDirectory: agent.installDirectory } : {}),
-              }
-            : hostKind === "eas"
-              ? { kind: "eas" }
-              : undefined,
-        ),
+        quickStart: isWatchSimulator(device)
+          ? watchSimulatorQuickStart(device)
+          : agentDeviceQuickStart(
+              device,
+              [],
+              command,
+              hostKind === "simlock"
+                ? {
+                    kind: "simlock",
+                    ...(agent.installDirectory ? { installDirectory: agent.installDirectory } : {}),
+                  }
+                : hostKind === "eas"
+                  ? { kind: "eas" }
+                  : undefined,
+            ),
       };
     }).pipe(Effect.mapError(toolError)),
   ),

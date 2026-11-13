@@ -25,6 +25,27 @@ const DEFAULT_DISPLAY_SCREENSHOT = `f=$(mktemp -t t3-screenshot) || exit 1
 trap 'rm -f "$f"' 0
 xcrun simctl io "$1" screenshot --type=png "$f" >/dev/null && base64 -i "$f"`;
 
+// expo-device-hub lists only iOS simulators, but its boot, serve-sim stream and screenshot routes
+// take any simulator udid, so watchOS simulators are listed here.
+const WATCH_RUNTIME = /\.SimRuntime\.watchOS-(\d+(?:-\d+)*)$/;
+const decodeSimctlDevices = Schema.decodeUnknownOption(
+  Schema.fromJsonString(
+    Schema.Struct({
+      devices: Schema.Record(
+        Schema.String,
+        Schema.Array(
+          Schema.Struct({
+            udid: Schema.String,
+            name: Schema.String,
+            state: Schema.String,
+            isAvailable: Schema.optional(Schema.Boolean),
+          }),
+        ),
+      ),
+    }),
+  ),
+);
+
 const HubDevice = Schema.Struct({
   id: Schema.String,
   name: Schema.String,
@@ -188,6 +209,35 @@ export const makeDeviceHubOperations = (options: {
     const simulatorsUnlisted =
       hubList.simulators.length === 0 &&
       (hubList.errors ?? []).some((error) => SIMULATOR_LIST_FAILED.test(error.message));
+    if (!simulatorsUnlisted && (yield* options.platformAvailable("ios"))) {
+      const watches = yield* run("xcrun", ["simctl", "list", "devices", "watchOS", "--json"], {
+        timeoutMs: 30_000,
+      });
+      // The hub's own simctl listing reports simctl failures; a missing watch list adds nothing.
+      const runtimes =
+        watches.code === 0
+          ? Option.match(decodeSimctlDevices(watches.stdout), {
+              onNone: () => [],
+              onSome: (listed) => Object.entries(listed.devices),
+            })
+          : [];
+      for (const [runtime, simulators] of runtimes) {
+        const version = WATCH_RUNTIME.exec(runtime)?.[1];
+        if (version === undefined) continue;
+        for (const simulator of simulators) {
+          if (simulator.isAvailable === false) continue;
+          if (devices.some((device) => device.id === simulator.udid)) continue;
+          devices.push({
+            id: simulator.udid,
+            name: simulator.name,
+            platform: "ios",
+            version: `watchOS ${version.replaceAll("-", ".")}`,
+            booted: simulator.state === "Booted",
+            physical: false,
+          });
+        }
+      }
+    }
     return {
       devices,
       detail: details.join("\n") || undefined,

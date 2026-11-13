@@ -33,6 +33,11 @@ Studio's Device Manager. T3 Code detects standard SDK locations; set
 `ANDROID_HOME` for a custom location. The panel explains missing dependencies.
 After installing SDK tools, restart the environment server and refresh devices.
 
+Apple Watch simulators are listed with the iOS Simulators once a watchOS
+simulator runtime is installed in Xcode. You can tap and swipe them in the
+panel, but Home does not press the Digital Crown, so an app you open stays
+open. Agents can open and screenshot a watch, but cannot tap or type on it.
+
 Android emulator video also needs `ffmpeg` with the libx264 encoder on the device
 host's PATH, or an executable selected by `SERVE_EMU_FFMPEG` on that host. If
 opening an emulator reports an ffmpeg problem, install or fix the executable

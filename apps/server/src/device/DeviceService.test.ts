@@ -84,6 +84,76 @@ it.effect.each([400, 500])(
     }),
 );
 
+it.effect("lists watchOS simulators the hub omits, only where iOS Simulators run", () =>
+  Effect.gen(function* () {
+    const phone = {
+      id: "PHONE",
+      name: "iPhone Duo",
+      version: "iOS 27.2",
+      platform: "ios" as const,
+      booted: true,
+      physical: false,
+    };
+    const commands: Array<string> = [];
+    const watch = (udid: string, state: string, isAvailable = true) => ({
+      udid,
+      name: `Watch ${udid}`,
+      state,
+      isAvailable,
+    });
+    const simctl = JSON.stringify({
+      devices: {
+        "com.apple.CoreSimulator.SimRuntime.iOS-27-2-iPhone19-4": [watch("PHONE", "Booted")],
+        "com.apple.CoreSimulator.SimRuntime.watchOS-27-2": [
+          watch("BARK", "Booted"),
+          watch("SE", "Shutdown"),
+          watch("BROKEN", "Shutdown", false),
+        ],
+        "com.apple.CoreSimulator.SimRuntime.watchOS-11-4": [watch("OLD", "Shutdown")],
+      },
+    });
+    const operations = (iosAvailable: boolean) =>
+      makeDeviceHubOperations({
+        hostId: LOCAL_DEVICE_HOST_ID,
+        origin: "http://device.test",
+        http: HttpClient.make((request) =>
+          Effect.succeed(
+            HttpClientResponse.fromWeb(
+              request,
+              Response.json({ simulators: [phone], emulators: [] }),
+            ),
+          ),
+        ),
+        run: (command, args) =>
+          Effect.sync(() => {
+            commands.push([command, ...args].join(" "));
+            return { code: 0, stdout: simctl, stderr: "" };
+          }),
+        platformAvailable: (platform) => Effect.succeed(platform === "ios" && iosAvailable),
+      });
+
+    const listed = yield* operations(true).list;
+    expect(commands).toEqual(["xcrun simctl list devices watchOS --json"]);
+    expect(listed.devices).toEqual([
+      phone,
+      ...[
+        { id: "BARK", version: "watchOS 27.2", booted: true },
+        { id: "SE", version: "watchOS 27.2", booted: false },
+        { id: "OLD", version: "watchOS 11.4", booted: false },
+      ].map((device) => ({
+        ...device,
+        name: `Watch ${device.id}`,
+        platform: "ios",
+        physical: false,
+      })),
+    ]);
+
+    commands.length = 0;
+    expect((yield* operations(false).list).devices).toEqual([phone]);
+    expect(commands).toEqual([]);
+  }),
+);
+
 const fixture = Effect.fn("fixture")(function* (
   onBoot: Effect.Effect<void> = Effect.void,
   bootError?: string | { error?: string; errors?: Array<{ message: string; error?: string }> },
