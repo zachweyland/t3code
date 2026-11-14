@@ -1,4 +1,4 @@
-import type { DevicePlatform, EnvironmentId } from "@t3tools/contracts";
+import { isWatchSimulator, type DevicePlatform, type EnvironmentId } from "@t3tools/contracts";
 import { useAtomValue } from "@effect/atom-react";
 import { AsyncResult, Atom } from "effect/reactivity";
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
@@ -72,6 +72,8 @@ export interface DeviceViewControls {
   readonly foldingControls?: ReactNode;
   readonly keyboard: { readonly attached: boolean; readonly toggle: () => void } | null;
   readonly handle: DeviceStreamHandle | null;
+  /** watchOS has no rotation; Home presses the Digital Crown. */
+  readonly watch: boolean;
 }
 
 export interface DeviceStreamHandle {
@@ -100,7 +102,9 @@ export function DeviceStreamView(props: {
   const model = deviceModel(props.platform, props.deviceName ?? "");
   const isDuo = model?.id === "iphone-duo";
   // Apple publishes no AR model of the watch, and a phone frame misleads.
-  const isWatch = props.deviceVersion?.startsWith("watchOS ") === true;
+  const isWatch =
+    props.deviceVersion !== undefined &&
+    isWatchSimulator({ platform: props.platform, version: props.deviceVersion });
   const [presentation, setPresentation] = useState<"phone" | "flat">("phone");
   const [keyboardAttached, setKeyboardAttached] = useState(false);
   const cancelPhoneInputRef = useRef<(() => void) | null>(null);
@@ -306,9 +310,11 @@ export function DeviceStreamView(props: {
                 : null,
             showPhone: () => setPresentation("phone"),
             showFlat: () => setPresentation("flat"),
+            watch: isWatch,
             handle: client
               ? {
-                  pressButton: client.pressButton,
+                  pressButton: (button) =>
+                    client.pressButton(isWatch && button === "home" ? "digitalCrown" : button),
                   rotate: client.rotate,
                   inputConnected: inputState.connected,
                 }
@@ -372,6 +378,16 @@ export function DeviceStreamView(props: {
           onPointerUp={endPointer}
           onPointerCancel={endPointer}
           onLostPointerCapture={endPointer}
+          onWheel={
+            isWatch && inputState.connected
+              ? (event) =>
+                  client?.rotateDigitalCrown(
+                    event.deltaMode === WheelEvent.DOM_DELTA_LINE
+                      ? event.deltaY * 16
+                      : event.deltaY,
+                  )
+              : undefined
+          }
         >
           <div
             ref={mountCanvas}

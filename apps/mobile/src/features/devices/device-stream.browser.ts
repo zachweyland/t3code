@@ -18,7 +18,7 @@ export function stop() {
   activeClient = null;
 }
 
-export function command(button: "home" | "back" | "appSwitcher" | "rotate") {
+export function command(button: "home" | "back" | "appSwitcher" | "rotate" | "digitalCrown") {
   if (button === "rotate") activeClient?.rotate();
   else activeClient?.pressButton(button);
 }

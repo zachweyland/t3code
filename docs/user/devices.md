@@ -34,9 +34,10 @@ Studio's Device Manager. T3 Code detects standard SDK locations; set
 After installing SDK tools, restart the environment server and refresh devices.
 
 Apple Watch simulators are listed with the iOS Simulators once a watchOS
-simulator runtime is installed in Xcode. You can tap and swipe them in the
-panel, but Home does not press the Digital Crown, so an app you open stays
-open. Agents can open and screenshot a watch, but cannot tap or type on it.
+simulator runtime is installed in Xcode. They show without a 3D frame. In the
+panel, tap and swipe the screen, use Home to press the Digital Crown, and
+scroll with your mouse or trackpad to turn it. Agents can open and screenshot
+a watch, but cannot tap or type on it.
 
 Android emulator video also needs `ffmpeg` with the libx264 encoder on the device
 host's PATH, or an executable selected by `SERVE_EMU_FFMPEG` on that host. If

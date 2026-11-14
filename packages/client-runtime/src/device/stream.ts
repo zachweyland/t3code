@@ -127,7 +127,13 @@ export interface DeviceStreamTarget {
   readonly serveSimOnly?: boolean;
 }
 
-export type DeviceHardwareButton = "home" | "back" | "recents" | "power" | "appSwitcher";
+export type DeviceHardwareButton =
+  | "home"
+  | "back"
+  | "recents"
+  | "power"
+  | "appSwitcher"
+  | "digitalCrown";
 
 const RETRY_DELAY_MS = 1_000;
 const FIRST_FRAME_TIMEOUT_MS = 15_000;
@@ -159,6 +165,9 @@ const IOS_MSG_TOUCH = 0x03;
 const IOS_MSG_BUTTON = 0x04;
 const IOS_MSG_KEY = 0x06;
 const IOS_MSG_ORIENTATION = 0x07;
+const IOS_MSG_DIGITAL_CROWN = 0x0a;
+// watchOS ignores serve-sim's named home button; this HID consumer usage is the crown press.
+const DIGITAL_CROWN_PRESS = { page: 12, usage: 64 };
 const IOS_TAG_SCREEN_CONFIG = 0x82;
 const IOS_TAG_INPUT_ADMITTED = 0x83;
 
@@ -321,6 +330,8 @@ export interface DeviceStreamClient {
   readonly sendText: (text: string) => void;
   readonly pressButton: (button: DeviceHardwareButton) => void;
   readonly rotate: () => void;
+  /** watchOS only. Positive moves down a list, in roughly screen points. */
+  readonly rotateDigitalCrown: (delta: number) => void;
   readonly setOrientation: (orientation: DeviceScreenSize["orientation"]) => void;
   readonly controlDuo: (command: DuoCommand) => void;
   readonly setDuoPanels: (panels: DuoPanelSinks | null) => void;
@@ -1426,6 +1437,10 @@ export function createDeviceStreamClient(
       if (chunk.length > 0) send(JSON.stringify({ type: "text", text: chunk }));
     },
     pressButton: (button) => {
+      if (avcc && button === "digitalCrown") {
+        send(taggedJson(IOS_MSG_BUTTON, DIGITAL_CROWN_PRESS));
+        return;
+      }
       if (avcc) {
         const name =
           button === "home"
@@ -1443,6 +1458,11 @@ export function createDeviceStreamClient(
       const type = button === "appSwitcher" ? "recents" : button;
       if (type === "home" || type === "back" || type === "recents" || type === "power") {
         send(JSON.stringify({ type }));
+      }
+    },
+    rotateDigitalCrown: (delta) => {
+      if (avcc && Number.isFinite(delta) && delta !== 0) {
+        send(taggedJson(IOS_MSG_DIGITAL_CROWN, { delta }));
       }
     },
     rotate: () => {

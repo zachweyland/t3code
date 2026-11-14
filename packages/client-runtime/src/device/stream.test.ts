@@ -156,10 +156,10 @@ describe("native device stream transport", () => {
   );
 });
 
-describe("iOS keypad protocol", () => {
+describe("iOS HID input protocol", () => {
   afterEach(() => vi.unstubAllGlobals());
 
-  it("encodes keypad presses and releases as HID key packets", async () => {
+  it("encodes keypad keys and the Digital Crown as HID packets", async () => {
     const packets: Uint8Array[] = [];
     let opened!: (socket: Socket) => void;
     const connected = new Promise<Socket>((resolve) => {
@@ -231,15 +231,21 @@ describe("iOS keypad protocol", () => {
           client.sendKey({ code } as KeyboardEvent, phase);
         }
       }
+      client.pressButton("digitalCrown");
+      client.rotateDigitalCrown(120);
+      client.rotateDigitalCrown(0);
+
       const decoder = new TextDecoder();
       expect(
         packets.map((packet) => [packet[0], JSON.parse(decoder.decode(packet.subarray(1)))]),
-      ).toEqual(
-        keys.flatMap(([, usage]) => [
+      ).toEqual([
+        ...keys.flatMap(([, usage]) => [
           [0x06, { type: "down", usage }],
           [0x06, { type: "up", usage }],
         ]),
-      );
+        [0x04, { page: 12, usage: 64 }],
+        [0x0a, { delta: 120 }],
+      ]);
     } finally {
       client.stop();
     }

@@ -1,4 +1,4 @@
-import type { DeviceServiceState, ThreadId } from "@t3tools/contracts";
+import { isWatchSimulator, type DeviceServiceState, type ThreadId } from "@t3tools/contracts";
 
 /** Host identity is part of the selection because Android serials repeat across hosts. */
 export function threadDevicePreviews(state: DeviceServiceState | null, threadId: ThreadId) {
@@ -15,6 +15,7 @@ export function threadDevicePreviews(state: DeviceServiceState | null, threadId:
         name: device?.name ?? (session.platform === "ios" ? "iOS Simulator" : "Android Emulator"),
         description: [device?.version, host?.label].filter(Boolean).join(" · "),
         serveSimOnly: host?.kind === "simlock",
+        watch: device !== undefined && isWatchSimulator(device),
       };
     });
 }

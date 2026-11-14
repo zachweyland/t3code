@@ -118,7 +118,7 @@ export function DeviceControlsRail(props: {
               </Menu>
             ) : null}
           </>
-        ) : props.hostKind === "simlock" ? null : (
+        ) : props.hostKind === "simlock" || view.watch ? null : (
           <RailButton
             tooltipSide={popupSide}
             label="Rotate device"

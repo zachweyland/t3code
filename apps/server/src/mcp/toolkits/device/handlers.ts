@@ -7,6 +7,7 @@ import {
   type DeviceServiceState,
   type DeviceSummary,
   DeviceToolUnavailableError,
+  isWatchSimulator,
   LOCAL_DEVICE_HOST_ID,
 } from "@t3tools/contracts";
 import * as Effect from "effect/Effect";
@@ -83,9 +84,6 @@ export function agentDeviceQuickStart(
     platformNotes,
   ].join("\n");
 }
-
-const isWatchSimulator = (device: Pick<DeviceSummary, "platform" | "version">) =>
-  device.platform === "ios" && device.version.startsWith("watchOS ");
 
 // agent-device has no watchOS runner (XCUITest cannot drive watchOS UI), so it cannot target one.
 function watchSimulatorQuickStart(device: DeviceSummary): string {

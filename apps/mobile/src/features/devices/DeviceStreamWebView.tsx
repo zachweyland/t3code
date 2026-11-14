@@ -27,6 +27,7 @@ export interface DeviceStreamRef {
   back: () => void;
   appSwitcher: () => void;
   rotate: () => void;
+  digitalCrown: () => void;
 }
 
 type NativeStreamBridge = {
@@ -147,6 +148,7 @@ function DeviceStreamDocumentView({
     back: () => command("back"),
     appSwitcher: () => command("appSwitcher"),
     rotate: () => command("rotate"),
+    digitalCrown: () => command("digitalCrown"),
   }));
   const processTerminated = () => {
     if (!active.current || failed.current) return;

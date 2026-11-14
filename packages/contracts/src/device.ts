@@ -183,6 +183,10 @@ export const DeviceSummary = Schema.Struct({
 });
 export type DeviceSummary = typeof DeviceSummary.Type;
 
+/** Apple Watch simulators are listed as iOS devices whose version names watchOS. */
+export const isWatchSimulator = (device: Pick<DeviceSummary, "platform" | "version">) =>
+  device.platform === "ios" && device.version.startsWith("watchOS ");
+
 export const DevicePlatformAvailability = Schema.Struct({
   platform: DevicePlatform,
   available: Schema.Boolean,

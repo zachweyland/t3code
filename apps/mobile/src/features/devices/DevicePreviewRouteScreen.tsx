@@ -225,7 +225,7 @@ export function DevicePreviewScreen({
       disabled: !inputConnected,
       onPress: () => streamRef.current?.appSwitcher(),
     },
-    ...(preview?.session.platform === "ios"
+    ...(preview?.session.platform === "ios" && !preview.watch
       ? [
           {
             id: "rotate",
@@ -244,7 +244,9 @@ export function DevicePreviewScreen({
       onPress: () => void shutDownDevice(),
     },
   ];
-  const pressHome = () => streamRef.current?.home();
+  // watchOS ignores the home button; the Digital Crown press is its Home.
+  const pressHome = () =>
+    preview?.watch ? streamRef.current?.digitalCrown() : streamRef.current?.home();
   const menuItems: AppBarMenuItem[] = [
     ...(previews.length > 1
       ? [
