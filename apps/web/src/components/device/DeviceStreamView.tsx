@@ -86,6 +86,7 @@ export function DeviceStreamView(props: {
   readonly deviceId: string;
   readonly deviceName?: string;
   readonly deviceDescription?: string;
+  readonly deviceVersion?: string;
   readonly visible: boolean;
   readonly hostId: string;
   readonly allowPhoneView?: boolean;
@@ -98,6 +99,8 @@ export function DeviceStreamView(props: {
 }) {
   const model = deviceModel(props.platform, props.deviceName ?? "");
   const isDuo = model?.id === "iphone-duo";
+  // Apple publishes no AR model of the watch, and a phone frame misleads.
+  const isWatch = props.deviceVersion?.startsWith("watchOS ") === true;
   const [presentation, setPresentation] = useState<"phone" | "flat">("phone");
   const [keyboardAttached, setKeyboardAttached] = useState(false);
   const cancelPhoneInputRef = useRef<(() => void) | null>(null);
@@ -154,6 +157,7 @@ export function DeviceStreamView(props: {
     (status === "streaming" || retainingFrame) &&
     props.visible &&
     presentation === "phone" &&
+    !isWatch &&
     !phoneUnavailable &&
     !mjpegUrl &&
     !props.axOverlay &&
@@ -224,8 +228,9 @@ export function DeviceStreamView(props: {
     client?.sendTouch("end", x, y);
   };
 
-  const phoneUnavailableReason =
-    isDuo && !screen?.supportsHingeAngle
+  const phoneUnavailableReason = isWatch
+    ? "No 3D model for Apple Watch"
+    : isDuo && !screen?.supportsHingeAngle
       ? "iPhone Duo 3D requires Device Hub 0.11.0 or newer"
       : phoneUnavailable
         ? "3D is unavailable on this browser"
